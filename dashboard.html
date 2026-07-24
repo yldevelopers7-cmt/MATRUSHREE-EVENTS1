@@ -133,18 +133,23 @@ button.secondary{
   font-size:15px;
 }
 
-.image-url{ display:flex; gap:10px; margin-bottom:10px; }
-.image-url input{ margin:0; }
-
-.addImage{
-  margin-top:10px;
-  background:#009688;
-  color:white;
-  border:none;
-  padding:12px 20px;
-  border-radius:8px;
+.drop-zone{
+  border:2px dashed #c9b6de;
+  border-radius:14px;
+  background:#faf7fd;
+  padding:35px 20px;
+  text-align:center;
+  color:#777;
   cursor:pointer;
+  margin-top:8px;
+  margin-bottom:18px;
+  transition:.15s;
 }
+.drop-zone i{ font-size:30px; color:#6A1B9A; margin-bottom:10px; display:block; }
+.drop-zone p{ font-size:14px; }
+.drop-zone .browse-link{ color:#6A1B9A; font-weight:600; text-decoration:underline; }
+.drop-zone.dragover{ background:#f0e6fa; border-color:#6A1B9A; }
+.drop-zone.limit-reached{ opacity:.5; cursor:not-allowed; }
 
 .preview{
   display:grid;
@@ -152,12 +157,46 @@ button.secondary{
   gap:15px;
   margin-top:20px;
 }
-.preview img{
-  width:100%;
-  height:150px;
-  object-fit:cover;
+.preview-item{
+  position:relative;
   border-radius:10px;
+  overflow:hidden;
   box-shadow:0 5px 12px rgba(0,0,0,.15);
+  height:150px;
+  background:#eee;
+}
+.preview-item img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+.preview-item .remove-btn{
+  position:absolute;
+  top:6px;
+  right:6px;
+  width:26px;
+  height:26px;
+  border-radius:50%;
+  border:none;
+  background:rgba(0,0,0,.6);
+  color:#fff;
+  cursor:pointer;
+  font-size:13px;
+  line-height:1;
+}
+.preview-item .remove-btn:hover{ background:#f44336; }
+.preview-item .uploading-overlay{
+  position:absolute;
+  inset:0;
+  background:rgba(0,0,0,.45);
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px;
+  text-align:center;
+  padding:6px;
 }
 
 table{ width:100%; border-collapse:collapse; margin-top:20px; }
@@ -263,13 +302,12 @@ th{ background:#f4f4f4; }
         <label for="description">Description</label>
         <textarea id="description" placeholder="Event Description"></textarea>
 
-        <label>Image URLs <small>(direct https:// image links, max 10)</small></label>
-        <div id="imageContainer">
-          <div class="image-url">
-            <input type="url" class="imageInput" placeholder="https://example.com/photo.jpg">
-          </div>
+        <label>Event Photos <small>(drag &amp; drop or click to upload, max 10)</small></label>
+        <div id="dropZone" class="drop-zone">
+          <i class="fa fa-cloud-arrow-up"></i>
+          <p>Drag &amp; drop images here, or <span class="browse-link">click to browse</span></p>
+          <input type="file" id="fileInput" accept="image/*" multiple hidden>
         </div>
-        <button type="button" class="addImage" id="addImage"><i class="fa fa-plus"></i> Add Another Image</button>
 
         <div class="preview" id="preview"></div>
         <br>
@@ -334,6 +372,12 @@ import {
   orderBy,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import {
+  getStorage,
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL
+} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-storage.js";
 
 // ===== Firebase config & init (from firebase-config.js) =====
 const firebaseConfig = {
@@ -348,13 +392,14 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
 // ===== Dashboard logic (from dashboard.js) =====
 // ---------- element refs ----------
 const ownerEmail = document.getElementById("ownerEmail");
 const logoutBtn = document.getElementById("logoutBtn");
-const addImageBtn = document.getElementById("addImage");
-const imageContainer = document.getElementById("imageContainer");
+const dropZone = document.getElementById("dropZone");
+const fileInput = document.getElementById("fileInput");
 const preview = document.getElementById("preview");
 const form = document.getElementById("eventForm");
 const toast = document.getElementById("toast");
@@ -419,64 +464,144 @@ function cell(text) {
   return td;
 }
 
-function collectImageUrls() {
-  return Array.from(document.querySelectorAll(".imageInput"))
-    .map((input) => input.value.trim())
-    .filter((val) => val !== "" && /^https?:\/\//i.test(val))
+// ---------- image uploads (drag & drop / click to browse) ----------
+// Each entry: { id, url, uploading, localPreview, error }
+let uploadedImages = [];
+
+function getImageUrls() {
+  return uploadedImages
+    .filter((img) => !img.uploading && img.url && !img.error)
+    .map((img) => img.url)
     .slice(0, MAX_IMAGES);
 }
 
-function resetImageInputs(urls = [""]) {
-  imageContainer.innerHTML = "";
-  (urls.length ? urls : [""]).forEach((url) => addImageRow(url));
+function isUploading() {
+  return uploadedImages.some((img) => img.uploading);
+}
+
+function loadExistingImages(urls = []) {
+  uploadedImages.forEach((img) => { if (img.localPreview) URL.revokeObjectURL(img.localPreview); });
+  uploadedImages = urls.slice(0, MAX_IMAGES).map((url) => ({
+    id: crypto.randomUUID(),
+    url,
+    uploading: false,
+    localPreview: null,
+    error: null
+  }));
   renderPreview();
 }
 
-function addImageRow(value = "") {
-  if (imageContainer.querySelectorAll(".imageInput").length >= MAX_IMAGES) return;
-  const div = document.createElement("div");
-  div.className = "image-url";
-
-  const input = document.createElement("input");
-  input.type = "url";
-  input.className = "imageInput";
-  input.placeholder = "https://example.com/photo.jpg";
-  input.value = value;
-
-  div.appendChild(input);
-
-  if (imageContainer.children.length > 0) {
-    const removeBtn = document.createElement("button");
-    removeBtn.type = "button";
-    removeBtn.className = "delete";
-    removeBtn.textContent = "Remove";
-    removeBtn.addEventListener("click", () => {
-      div.remove();
-      renderPreview();
-    });
-    div.appendChild(removeBtn);
-  }
-
-  imageContainer.appendChild(div);
+function updateDropZoneState() {
+  const full = uploadedImages.length >= MAX_IMAGES;
+  dropZone.classList.toggle("limit-reached", full);
 }
 
 function renderPreview() {
   preview.innerHTML = "";
-  collectImageUrls().forEach((url) => {
-    const img = document.createElement("img");
-    img.src = url;
-    img.alt = "";
-    img.onerror = () => img.remove();
-    preview.appendChild(img);
+  uploadedImages.forEach((img) => {
+    const item = document.createElement("div");
+    item.className = "preview-item";
+
+    const imgEl = document.createElement("img");
+    imgEl.src = img.localPreview || img.url;
+    imgEl.alt = "";
+    item.appendChild(imgEl);
+
+    if (img.uploading) {
+      const overlay = document.createElement("div");
+      overlay.className = "uploading-overlay";
+      overlay.innerHTML = '<i class="fa fa-spinner fa-spin"></i>&nbsp; Uploading...';
+      item.appendChild(overlay);
+    } else if (img.error) {
+      const overlay = document.createElement("div");
+      overlay.className = "uploading-overlay";
+      overlay.textContent = "Upload failed";
+      item.appendChild(overlay);
+    }
+
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "remove-btn";
+    removeBtn.innerHTML = '<i class="fa fa-xmark"></i>';
+    removeBtn.addEventListener("click", () => {
+      if (img.localPreview) URL.revokeObjectURL(img.localPreview);
+      uploadedImages = uploadedImages.filter((i) => i.id !== img.id);
+      renderPreview();
+      updateDropZoneState();
+    });
+    item.appendChild(removeBtn);
+
+    preview.appendChild(item);
   });
+  updateDropZoneState();
 }
 
-addImageBtn.addEventListener("click", () => addImageRow());
-imageContainer.addEventListener("input", renderPreview);
+async function handleFiles(fileList) {
+  const files = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
+  const spaceLeft = MAX_IMAGES - uploadedImages.length;
+  if (spaceLeft <= 0) {
+    showToast(`Max ${MAX_IMAGES} images allowed`);
+    return;
+  }
+  files.slice(0, spaceLeft).forEach((file) => uploadOneFile(file));
+}
+
+function uploadOneFile(file) {
+  const entry = {
+    id: crypto.randomUUID(),
+    url: null,
+    uploading: true,
+    localPreview: URL.createObjectURL(file),
+    error: null
+  };
+  uploadedImages.push(entry);
+  renderPreview();
+
+  const path = `events/${Date.now()}_${Math.random().toString(36).slice(2)}_${file.name}`;
+  const fileRef = storageRef(storage, path);
+
+  uploadBytes(fileRef, file)
+    .then((snapshot) => getDownloadURL(snapshot.ref))
+    .then((url) => {
+      entry.url = url;
+      entry.uploading = false;
+      renderPreview();
+    })
+    .catch((err) => {
+      console.error(err);
+      entry.uploading = false;
+      entry.error = true;
+      renderPreview();
+      showToast("An image failed to upload");
+    });
+}
+
+dropZone.addEventListener("click", () => {
+  if (uploadedImages.length < MAX_IMAGES) fileInput.click();
+});
+fileInput.addEventListener("change", (e) => {
+  handleFiles(e.target.files);
+  fileInput.value = "";
+});
+["dragenter", "dragover"].forEach((evt) => {
+  dropZone.addEventListener(evt, (e) => {
+    e.preventDefault();
+    dropZone.classList.add("dragover");
+  });
+});
+["dragleave", "drop"].forEach((evt) => {
+  dropZone.addEventListener(evt, (e) => {
+    e.preventDefault();
+    dropZone.classList.remove("dragover");
+  });
+});
+dropZone.addEventListener("drop", (e) => {
+  if (e.dataTransfer && e.dataTransfer.files) handleFiles(e.dataTransfer.files);
+});
 
 function resetForm() {
   form.reset();
-  resetImageInputs();
+  loadExistingImages([]);
   editingId = null;
   submitEventBtn.textContent = "Publish Event";
   eventFormTitle.textContent = "Add New Event";
@@ -491,13 +616,18 @@ form.addEventListener("submit", async (e) => {
   const title = document.getElementById("title").value.trim();
   if (!title) return;
 
+  if (isUploading()) {
+    showToast("Please wait for images to finish uploading");
+    return;
+  }
+
   const payload = {
     title,
     category: document.getElementById("category").value,
     date: document.getElementById("date").value,
     location: document.getElementById("location").value.trim(),
     description: document.getElementById("description").value.trim(),
-    images: collectImageUrls()
+    images: getImageUrls()
   };
 
   showLoader();
@@ -587,7 +717,7 @@ async function editEvent(id) {
     document.getElementById("date").value = event.date || "";
     document.getElementById("location").value = event.location || "";
     document.getElementById("description").value = event.description || "";
-    resetImageInputs(Array.isArray(event.images) ? event.images : []);
+    loadExistingImages(Array.isArray(event.images) ? event.images : []);
 
     submitEventBtn.textContent = "Update Event";
     eventFormTitle.textContent = "Edit Event";
