@@ -372,12 +372,11 @@ import {
   orderBy,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
-import {
-  getStorage,
-  ref as storageRef,
-  uploadBytes,
-  getDownloadURL
-} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-storage.js";
+
+// ===== Cloudinary config (unsigned upload, no backend/billing required) =====
+const CLOUDINARY_CLOUD_NAME = "an2iqhiw";
+const CLOUDINARY_UPLOAD_PRESET = "matrushree_events";
+const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
 
 // ===== Firebase config & init (from firebase-config.js) =====
 const firebaseConfig = {
@@ -392,7 +391,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const storage = getStorage(app);
 
 // ===== Dashboard logic (from dashboard.js) =====
 // ---------- element refs ----------
@@ -557,13 +555,17 @@ function uploadOneFile(file) {
   uploadedImages.push(entry);
   renderPreview();
 
-  const path = `events/${Date.now()}_${Math.random().toString(36).slice(2)}_${file.name}`;
-  const fileRef = storageRef(storage, path);
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
 
-  uploadBytes(fileRef, file)
-    .then((snapshot) => getDownloadURL(snapshot.ref))
-    .then((url) => {
-      entry.url = url;
+  fetch(CLOUDINARY_UPLOAD_URL, { method: "POST", body: formData })
+    .then((res) => {
+      if (!res.ok) throw new Error("Cloudinary upload failed");
+      return res.json();
+    })
+    .then((data) => {
+      entry.url = data.secure_url;
       entry.uploading = false;
       renderPreview();
     })
