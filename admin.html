@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Matrushree Events | Admin Login</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:'Poppins',sans-serif;
+}
+body{
+  height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  background:linear-gradient(135deg,#7b1fa2,#d81b60);
+  overflow:hidden;
+}
+.background{
+  position:fixed;
+  inset:0;
+  background:url('../images/bg.jpg') center center/cover;
+  filter:blur(8px);
+  opacity:.18;
+  z-index:0;
+}
+.login-card{
+  position:relative;
+  width:400px;
+  background:white;
+  border-radius:20px;
+  padding:40px;
+  box-shadow:0 15px 50px rgba(0,0,0,.25);
+  z-index:2;
+  animation:fadeIn .8s ease;
+}
+.logo{
+  text-align:center;
+  margin-bottom:15px;
+}
+.logo h1{
+  font-size:30px;
+  color:#7b1fa2;
+}
+.logo p{
+  font-size:14px;
+  color:#777;
+}
+.input-group{
+  margin-top:20px;
+}
+label{
+  display:block;
+  margin-bottom:8px;
+  font-weight:500;
+}
+input{
+  width:100%;
+  padding:14px;
+  border-radius:10px;
+  border:1px solid #ddd;
+  font-size:15px;
+  outline:none;
+  transition:.3s;
+}
+input:focus{
+  border-color:#7b1fa2;
+  box-shadow:0 0 0 3px rgba(123,31,162,.15);
+}
+button{
+  width:100%;
+  padding:15px;
+  margin-top:30px;
+  border:none;
+  border-radius:10px;
+  font-size:16px;
+  font-weight:600;
+  cursor:pointer;
+  background:#7b1fa2;
+  color:white;
+  transition:.3s;
+}
+button:hover{
+  background:#5d1680;
+}
+button:disabled{
+  opacity:.6;
+  cursor:not-allowed;
+}
+#error{
+  margin-top:15px;
+  color:red;
+  text-align:center;
+  font-size:14px;
+}
+.loading{
+  display:none;
+  text-align:center;
+  margin-top:15px;
+  font-size:14px;
+  color:#666;
+}
+.footer{
+  margin-top:25px;
+  text-align:center;
+  font-size:13px;
+  color:#888;
+}
+@keyframes fadeIn{
+  from{ opacity:0; transform:translateY(40px); }
+  to{ opacity:1; transform:translateY(0); }
+}
+@media(max-width:500px){
+  .login-card{ width:90%; padding:30px 20px; }
+}
+
+</style>
+</head>
+<body>
+<div class="background"></div>
+<div class="login-card">
+  <div class="logo">
+    <h1>Matrushree Events</h1>
+    <p>Owner Login Panel</p>
+  </div>
+  <form id="loginForm">
+    <div class="input-group">
+      <label for="email">Email</label>
+      <input type="email" id="email" placeholder="Enter your email" required autocomplete="username">
+    </div>
+    <div class="input-group">
+      <label for="password">Password</label>
+      <input type="password" id="password" placeholder="Enter your password" required autocomplete="current-password">
+    </div>
+    <button type="submit">Login</button>
+    <div class="loading" id="loading">Signing in...</div>
+    <div id="error"></div>
+  </form>
+  <div class="footer">&copy; <span id="year"></span> Matrushree Events</div>
+</div>
+<script type="module">
+
+// ===== Firebase SDK imports =====
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+
+// ===== Firebase config & init (from firebase-config.js) =====
+const firebaseConfig = {
+  apiKey: "AIzaSyByFsZIzAeWPRxUKrSrIReEezMOH9Z9nEY",
+  authDomain: "mathrushree-95827.firebaseapp.com",
+  projectId: "mathrushree-95827",
+  storageBucket: "mathrushree-95827.firebasestorage.app",
+  messagingSenderId: "922334092236",
+  appId: "1:922334092236:web:d0d2f6036dfa139b861b69"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// ===== Login logic (from auth.js) =====
+import {
+  signInWithEmailAndPassword,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+
+// If already logged in, go straight to dashboard
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    window.location.href = "dashboard.html";
+  }
+});
+
+const form = document.getElementById("loginForm");
+const loading = document.getElementById("loading");
+const error = document.getElementById("error");
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  error.textContent = "";
+  loading.style.display = "block";
+
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    window.location.href = "dashboard.html";
+  } catch (err) {
+    let message = "Login failed.";
+    switch (err.code) {
+      // Modern Firebase Auth merges wrong-email/wrong-password into this
+      // single code to avoid leaking which one was incorrect.
+      case "auth/invalid-credential":
+      case "auth/user-not-found":
+      case "auth/wrong-password":
+        message = "Invalid email or password.";
+        break;
+      case "auth/too-many-requests":
+        message = "Too many login attempts. Try again later.";
+        break;
+      case "auth/network-request-failed":
+        message = "Network error. Check your internet connection.";
+        break;
+    }
+    error.textContent = message;
+  } finally {
+    loading.style.display = "none";
+  }
+});
+
+</script>
+<script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+</body>
+</html>
