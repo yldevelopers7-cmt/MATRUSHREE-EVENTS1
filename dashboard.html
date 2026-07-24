@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Matrushree Events | Owner Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:'Poppins',sans-serif;
+}
+body{
+  background:#f4f0f8;
+  display:flex;
+  min-height:100vh;
+}
+.sidebar{
+  width:250px;
+  background:#6A1B9A;
+  color:white;
+  padding:30px 20px;
+  position:fixed;
+  top:0;
+  left:0;
+  bottom:0;
+}
+.sidebar .logo h2{ font-size:22px; }
+.sidebar .logo p{ font-size:12px; opacity:.8; margin-bottom:30px; }
+.menu button{
+  width:100%;
+  text-align:left;
+  background:none;
+  border:none;
+  color:white;
+  padding:14px 12px;
+  margin-bottom:8px;
+  border-radius:10px;
+  font-size:15px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.menu button:hover, .menu button.active{ background:rgba(255,255,255,.15); }
+.menu button.logout{ margin-top:40px; background:rgba(255,255,255,.08); }
+.menu .badge{
+  margin-left:auto;
+  background:#f44336;
+  color:#fff;
+  font-size:11px;
+  padding:2px 8px;
+  border-radius:20px;
+}
+
+.main{
+  margin-left:250px;
+  padding:35px;
+  width:100%;
+}
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:30px;
+}
+.header h1{ color:#333; }
+.header p{ color:#777; font-size:14px; }
+
+.cards{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:20px;
+  margin-bottom:35px;
+}
+.card{
+  background:white;
+  padding:25px;
+  border-radius:18px;
+  box-shadow:0 8px 25px rgba(0,0,0,.08);
+}
+.card h3{ font-size:15px; color:#666; margin-bottom:10px; }
+.card h1{ font-size:32px; color:#6A1B9A; }
+
+.section{
+  background:white;
+  padding:30px;
+  border-radius:20px;
+  box-shadow:0 8px 25px rgba(0,0,0,.08);
+  margin-bottom:30px;
+}
+.section h2{ margin-bottom:20px; color:#444; }
+
+input, textarea, select{
+  width:100%;
+  padding:14px;
+  margin-top:8px;
+  margin-bottom:18px;
+  border:1px solid #ddd;
+  border-radius:10px;
+  font-size:15px;
+  font-family:inherit;
+}
+label small{ color:#999; font-weight:400; }
+textarea{ height:120px; resize:vertical; }
+
+.form-actions{ display:flex; gap:12px; }
+
+button.primary{
+  background:#6A1B9A;
+  color:white;
+  padding:14px 25px;
+  border:none;
+  border-radius:10px;
+  cursor:pointer;
+  font-size:15px;
+}
+button.primary:hover{ background:#54147b; }
+button.primary:disabled{ opacity:.6; cursor:not-allowed; }
+
+button.secondary{
+  background:#eee;
+  color:#444;
+  padding:14px 25px;
+  border:none;
+  border-radius:10px;
+  cursor:pointer;
+  font-size:15px;
+}
+
+.image-url{ display:flex; gap:10px; margin-bottom:10px; }
+.image-url input{ margin:0; }
+
+.addImage{
+  margin-top:10px;
+  background:#009688;
+  color:white;
+  border:none;
+  padding:12px 20px;
+  border-radius:8px;
+  cursor:pointer;
+}
+
+.preview{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+  gap:15px;
+  margin-top:20px;
+}
+.preview img{
+  width:100%;
+  height:150px;
+  object-fit:cover;
+  border-radius:10px;
+  box-shadow:0 5px 12px rgba(0,0,0,.15);
+}
+
+table{ width:100%; border-collapse:collapse; margin-top:20px; }
+th, td{ padding:14px; text-align:left; border-bottom:1px solid #eee; }
+th{ background:#f4f4f4; }
+
+.edit, .approve{ background:#2196F3; color:white; padding:8px 15px; border:none; border-radius:7px; cursor:pointer; margin-right:6px; }
+.delete, .reject{ background:#f44336; color:white; padding:8px 15px; border:none; border-radius:7px; cursor:pointer; }
+.status-pill{ padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600; }
+.status-pending{ background:#fff3cd; color:#997404; }
+.status-approved{ background:#d4edda; color:#1b6e2c; }
+.status-rejected{ background:#f8d7da; color:#a5222a; }
+
+#loader{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(255,255,255,.75);
+  justify-content:center;
+  align-items:center;
+  z-index:9999;
+  font-size:24px;
+  font-weight:bold;
+}
+#loader.show{ display:flex; }
+
+#toast{
+  position:fixed;
+  bottom:25px;
+  right:25px;
+  background:#333;
+  color:#fff;
+  padding:15px 20px;
+  border-radius:10px;
+  display:none;
+  z-index:9999;
+}
+#toast.show{ display:block; }
+
+@media(max-width:900px){
+  .sidebar{ display:none; }
+  .main{ margin-left:0; padding:20px; }
+}
+
+</style>
+</head>
+<body>
+<!-- Sidebar -->
+<div class="sidebar">
+  <div class="logo">
+    <h2>Matrushree</h2>
+    <p>Owner Dashboard</p>
+  </div>
+  <div class="menu">
+    <button data-target="eventsSection" class="nav-btn active"><i class="fa fa-images"></i> Events</button>
+    <button data-target="bookingsSection" class="nav-btn"><i class="fa fa-calendar-check"></i> Bookings <span id="pendingBadge" class="badge" hidden>0</span></button>
+    <button id="logoutBtn" class="logout"><i class="fa fa-right-from-bracket"></i> Logout</button>
+  </div>
+</div>
+
+<!-- Main Content -->
+<div class="main">
+  <div class="header">
+    <div>
+      <h1>Dashboard</h1>
+      <p>Welcome back! Manage all your events and enquiries here.</p>
+    </div>
+    <div><h3 id="ownerEmail"></h3></div>
+  </div>
+
+  <div class="cards">
+    <div class="card"><h3>Total Events</h3><h1 id="totalEvents">0</h1></div>
+    <div class="card"><h3>Total Photos</h3><h1 id="totalPhotos">0</h1></div>
+    <div class="card"><h3>Categories</h3><h1 id="totalCategories">0</h1></div>
+    <div class="card"><h3>Pending Bookings</h3><h1 id="totalPending">0</h1></div>
+  </div>
+
+  <!-- ================= EVENTS SECTION ================= -->
+  <section id="eventsSection">
+    <div class="section">
+      <h2><i class="fa fa-calendar-plus"></i> <span id="eventFormTitle">Add New Event</span></h2>
+      <form id="eventForm">
+        <label for="title">Event Name</label>
+        <input type="text" id="title" placeholder="Wedding, Reception..." required>
+
+        <label for="category">Category</label>
+        <select id="category">
+          <option>Wedding</option>
+          <option>Reception</option>
+          <option>Housewarming</option>
+          <option>Birthday</option>
+          <option>Naming Ceremony</option>
+          <option>Corporate Event</option>
+          <option>Other</option>
+        </select>
+
+        <label for="date">Event Date</label>
+        <input type="date" id="date">
+
+        <label for="location">Location</label>
+        <input type="text" id="location" placeholder="Mandya, Mysore...">
+
+        <label for="description">Description</label>
+        <textarea id="description" placeholder="Event Description"></textarea>
+
+        <label>Image URLs <small>(direct https:// image links, max 10)</small></label>
+        <div id="imageContainer">
+          <div class="image-url">
+            <input type="url" class="imageInput" placeholder="https://example.com/photo.jpg">
+          </div>
+        </div>
+        <button type="button" class="addImage" id="addImage"><i class="fa fa-plus"></i> Add Another Image</button>
+
+        <div class="preview" id="preview"></div>
+        <br>
+        <div class="form-actions">
+          <button class="primary" type="submit" id="submitEventBtn">Publish Event</button>
+          <button class="secondary" type="button" id="cancelEditBtn" hidden>Cancel Edit</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="section">
+      <h2><i class="fa fa-images"></i> Existing Events</h2>
+      <table>
+        <thead>
+          <tr><th>Title</th><th>Category</th><th>Date</th><th>Photos</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="eventsTable">
+          <tr><td colspan="5" style="text-align:center;">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================= BOOKINGS SECTION ================= -->
+  <section id="bookingsSection" hidden>
+    <div class="section">
+      <h2><i class="fa fa-calendar-check"></i> Booking Enquiries</h2>
+      <table>
+        <thead>
+          <tr><th>Name</th><th>Phone</th><th>Event</th><th>Date</th><th>Status</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="bookingsTable">
+          <tr><td colspan="6" style="text-align:center;">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<div id="loader">Loading...</div>
+<div id="toast">Saved Successfully</div>
+
+<script type="module">
+
+// ===== Firebase SDK imports =====
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+import {
+  getAuth,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  orderBy,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+
+// ===== Firebase config & init (from firebase-config.js) =====
+const firebaseConfig = {
+  apiKey: "AIzaSyByFsZIzAeWPRxUKrSrIReEezMOH9Z9nEY",
+  authDomain: "mathrushree-95827.firebaseapp.com",
+  projectId: "mathrushree-95827",
+  storageBucket: "mathrushree-95827.firebasestorage.app",
+  messagingSenderId: "922334092236",
+  appId: "1:922334092236:web:d0d2f6036dfa139b861b69"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// ===== Dashboard logic (from dashboard.js) =====
+// ---------- element refs ----------
+const ownerEmail = document.getElementById("ownerEmail");
+const logoutBtn = document.getElementById("logoutBtn");
+const addImageBtn = document.getElementById("addImage");
+const imageContainer = document.getElementById("imageContainer");
+const preview = document.getElementById("preview");
+const form = document.getElementById("eventForm");
+const toast = document.getElementById("toast");
+const loader = document.getElementById("loader");
+const eventsTable = document.getElementById("eventsTable");
+const bookingsTable = document.getElementById("bookingsTable");
+const totalEvents = document.getElementById("totalEvents");
+const totalPhotos = document.getElementById("totalPhotos");
+const totalCategories = document.getElementById("totalCategories");
+const totalPending = document.getElementById("totalPending");
+const pendingBadge = document.getElementById("pendingBadge");
+const submitEventBtn = document.getElementById("submitEventBtn");
+const cancelEditBtn = document.getElementById("cancelEditBtn");
+const eventFormTitle = document.getElementById("eventFormTitle");
+const navBtns = document.querySelectorAll(".nav-btn");
+
+const MAX_IMAGES = 10;
+let editingId = null;
+
+// ---------- auth guard ----------
+onAuthStateChanged(auth, (user) => {
+  if (!user) {
+    window.location.href = "admin.html";
+    return;
+  }
+  ownerEmail.innerText = user.email;
+  loadEvents();
+  loadBookings();
+});
+
+logoutBtn.addEventListener("click", async () => {
+  await signOut(auth);
+  window.location.href = "admin.html";
+});
+
+// ---------- section nav ----------
+navBtns.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    navBtns.forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    document.querySelectorAll(".main > section").forEach((s) => (s.hidden = true));
+    document.getElementById(btn.dataset.target).hidden = false;
+  });
+});
+
+// ---------- helpers ----------
+function showToast(message) {
+  toast.innerText = message;
+  toast.classList.add("show");
+  setTimeout(() => toast.classList.remove("show"), 3000);
+}
+function showLoader() { loader.classList.add("show"); }
+function hideLoader() { loader.classList.remove("show"); }
+
+// Build DOM nodes with text content rather than innerHTML so event data
+// (title, category, etc.) can never be interpreted as markup — this data
+// ultimately traces back to whatever the admin typed into the form, and
+// browser-based XSS filters won't save us if it's rendered unescaped.
+function cell(text) {
+  const td = document.createElement("td");
+  td.textContent = text;
+  return td;
+}
+
+function collectImageUrls() {
+  return Array.from(document.querySelectorAll(".imageInput"))
+    .map((input) => input.value.trim())
+    .filter((val) => val !== "" && /^https?:\/\//i.test(val))
+    .slice(0, MAX_IMAGES);
+}
+
+function resetImageInputs(urls = [""]) {
+  imageContainer.innerHTML = "";
+  (urls.length ? urls : [""]).forEach((url) => addImageRow(url));
+  renderPreview();
+}
+
+function addImageRow(value = "") {
+  if (imageContainer.querySelectorAll(".imageInput").length >= MAX_IMAGES) return;
+  const div = document.createElement("div");
+  div.className = "image-url";
+
+  const input = document.createElement("input");
+  input.type = "url";
+  input.className = "imageInput";
+  input.placeholder = "https://example.com/photo.jpg";
+  input.value = value;
+
+  div.appendChild(input);
+
+  if (imageContainer.children.length > 0) {
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "delete";
+    removeBtn.textContent = "Remove";
+    removeBtn.addEventListener("click", () => {
+      div.remove();
+      renderPreview();
+    });
+    div.appendChild(removeBtn);
+  }
+
+  imageContainer.appendChild(div);
+}
+
+function renderPreview() {
+  preview.innerHTML = "";
+  collectImageUrls().forEach((url) => {
+    const img = document.createElement("img");
+    img.src = url;
+    img.alt = "";
+    img.onerror = () => img.remove();
+    preview.appendChild(img);
+  });
+}
+
+addImageBtn.addEventListener("click", () => addImageRow());
+imageContainer.addEventListener("input", renderPreview);
+
+function resetForm() {
+  form.reset();
+  resetImageInputs();
+  editingId = null;
+  submitEventBtn.textContent = "Publish Event";
+  eventFormTitle.textContent = "Add New Event";
+  cancelEditBtn.hidden = true;
+}
+cancelEditBtn.addEventListener("click", resetForm);
+
+// ---------- events: create / update ----------
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const title = document.getElementById("title").value.trim();
+  if (!title) return;
+
+  const payload = {
+    title,
+    category: document.getElementById("category").value,
+    date: document.getElementById("date").value,
+    location: document.getElementById("location").value.trim(),
+    description: document.getElementById("description").value.trim(),
+    images: collectImageUrls()
+  };
+
+  showLoader();
+  submitEventBtn.disabled = true;
+  try {
+    if (editingId) {
+      await updateDoc(doc(db, "events", editingId), payload);
+      showToast("Event Updated");
+    } else {
+      await addDoc(collection(db, "events"), { ...payload, createdAt: serverTimestamp() });
+      showToast("Event Published");
+    }
+    resetForm();
+    await loadEvents();
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    submitEventBtn.disabled = false;
+    hideLoader();
+  }
+});
+
+// ---------- events: list ----------
+async function loadEvents() {
+  eventsTable.innerHTML = "";
+  const q = query(collection(db, "events"), orderBy("createdAt", "desc"));
+  const snapshot = await getDocs(q);
+
+  let eventCount = 0;
+  let photoCount = 0;
+  const categories = new Set();
+
+  if (snapshot.empty) {
+    eventsTable.innerHTML = '<tr><td colspan="5" style="text-align:center">No Events Yet</td></tr>';
+    totalEvents.innerText = 0;
+    totalPhotos.innerText = 0;
+    totalCategories.innerText = 0;
+    return;
+  }
+
+  snapshot.forEach((docSnap) => {
+    const data = docSnap.data();
+    const images = Array.isArray(data.images) ? data.images : [];
+    eventCount++;
+    photoCount += images.length;
+    categories.add(data.category);
+
+    const tr = document.createElement("tr");
+    tr.appendChild(cell(data.title || ""));
+    tr.appendChild(cell(data.category || ""));
+    tr.appendChild(cell(data.date || "-"));
+    tr.appendChild(cell(String(images.length)));
+
+    const actionsTd = document.createElement("td");
+    const editBtn = document.createElement("button");
+    editBtn.className = "edit";
+    editBtn.textContent = "Edit";
+    editBtn.addEventListener("click", () => editEvent(docSnap.id));
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "delete";
+    deleteBtn.textContent = "Delete";
+    deleteBtn.addEventListener("click", () => deleteEvent(docSnap.id));
+
+    actionsTd.append(editBtn, deleteBtn);
+    tr.appendChild(actionsTd);
+    eventsTable.appendChild(tr);
+  });
+
+  totalEvents.innerText = eventCount;
+  totalPhotos.innerText = photoCount;
+  totalCategories.innerText = categories.size;
+}
+
+async function editEvent(id) {
+  showLoader();
+  try {
+    const snap = await getDoc(doc(db, "events", id));
+    if (!snap.exists()) {
+      showToast("Event no longer exists");
+      return;
+    }
+    const event = snap.data();
+    editingId = id;
+    document.getElementById("title").value = event.title || "";
+    document.getElementById("category").value = event.category || "Wedding";
+    document.getElementById("date").value = event.date || "";
+    document.getElementById("location").value = event.location || "";
+    document.getElementById("description").value = event.description || "";
+    resetImageInputs(Array.isArray(event.images) ? event.images : []);
+
+    submitEventBtn.textContent = "Update Event";
+    eventFormTitle.textContent = "Edit Event";
+    cancelEditBtn.hidden = false;
+    document.querySelector('.nav-btn[data-target="eventsSection"]').click();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    hideLoader();
+  }
+}
+
+async function deleteEvent(id) {
+  if (!confirm("Delete this event?")) return;
+  showLoader();
+  try {
+    await deleteDoc(doc(db, "events", id));
+    showToast("Event Deleted");
+    if (editingId === id) resetForm();
+    await loadEvents();
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    hideLoader();
+  }
+}
+
+// ---------- bookings ----------
+async function loadBookings() {
+  bookingsTable.innerHTML = "";
+  const q = query(collection(db, "bookings"), orderBy("createdAt", "desc"));
+  let snapshot;
+  try {
+    snapshot = await getDocs(q);
+  } catch (err) {
+    bookingsTable.innerHTML = `<tr><td colspan="6" style="text-align:center">${err.message}</td></tr>`;
+    return;
+  }
+
+  if (snapshot.empty) {
+    bookingsTable.innerHTML = '<tr><td colspan="6" style="text-align:center">No Bookings Yet</td></tr>';
+    totalPending.innerText = 0;
+    pendingBadge.hidden = true;
+    return;
+  }
+
+  let pending = 0;
+
+  snapshot.forEach((docSnap) => {
+    const b = docSnap.data();
+    const status = b.status || "Pending";
+    if (status === "Pending") pending++;
+
+    const tr = document.createElement("tr");
+    tr.appendChild(cell(b.name || ""));
+    tr.appendChild(cell(b.phone || ""));
+    tr.appendChild(cell(b.event || ""));
+    tr.appendChild(cell(b.eventDate || "-"));
+
+    const statusTd = document.createElement("td");
+    const pill = document.createElement("span");
+    pill.className = "status-pill status-" + status.toLowerCase();
+    pill.textContent = status;
+    statusTd.appendChild(pill);
+    tr.appendChild(statusTd);
+
+    const actionsTd = document.createElement("td");
+    if (status === "Pending") {
+      const approveBtn = document.createElement("button");
+      approveBtn.className = "approve";
+      approveBtn.textContent = "Approve";
+      approveBtn.addEventListener("click", () => setBookingStatus(docSnap.id, "Approved"));
+
+      const rejectBtn = document.createElement("button");
+      rejectBtn.className = "reject";
+      rejectBtn.textContent = "Reject";
+      rejectBtn.addEventListener("click", () => setBookingStatus(docSnap.id, "Rejected"));
+
+      actionsTd.append(approveBtn, rejectBtn);
+    } else {
+      actionsTd.textContent = "—";
+    }
+    tr.appendChild(actionsTd);
+    bookingsTable.appendChild(tr);
+  });
+
+  totalPending.innerText = pending;
+  pendingBadge.hidden = pending === 0;
+  pendingBadge.textContent = pending;
+}
+
+async function setBookingStatus(id, status) {
+  showLoader();
+  try {
+    await updateDoc(doc(db, "bookings", id), { status });
+    showToast(`Booking ${status}`);
+    await loadBookings();
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    hideLoader();
+  }
+}
+
+</script>
+</body>
+</html>
