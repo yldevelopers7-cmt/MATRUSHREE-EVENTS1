@@ -166,13 +166,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
 
 // ===== Login logic (from auth.js) =====
-import {
-  signInWithEmailAndPassword,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 
 // If already logged in, go straight to dashboard
 onAuthStateChanged(auth, (user) => {
